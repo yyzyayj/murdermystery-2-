@@ -9,7 +9,6 @@ local CoreGui
 pcall(function() CoreGui = getService("CoreGui") end)
 local LocalPlayer = Players.LocalPlayer
 
---// ─────────────────────────────── Library table ───────────────────────────────
 local YzZ = {
 	Version     = "1.0.0",
 	Flags       = {},
@@ -21,7 +20,6 @@ WindowClass.__index = WindowClass
 local TabClass = {}
 TabClass.__index = TabClass
 
---// ─────────────────────────────── Executor feature detection ───────────────────────────────
 local hasFS = (type(writefile) == "function" and type(readfile) == "function"
 	and type(isfile) == "function" and type(isfolder) == "function" and type(makefolder) == "function")
 local httpRequest = (syn and syn.request) or http_request or request or (http and http.request) or (fluxus and fluxus.request)
@@ -36,7 +34,6 @@ local function ensureFolder(path)
 	end
 end
 
---// ─────────────────────────────── Themes ───────────────────────────────
 local rgb = Color3.fromRGB
 YzZ.Themes = {
 	Dark = {
@@ -87,8 +84,6 @@ local function resolveTheme(t)
 	return result
 end
 
---// ─────────────────────────────── Icon set (names -> assets) ───────────────────────────────
--- Extend it with:  YzZ:AddIcons({ myicon = "rbxassetid://123", other = 456 })
 YzZ.Icons = {
 	["home"] = "rbxassetid://98755624629571", ["house"] = "rbxassetid://98755624629571",
 	["settings"] = "rbxassetid://80758916183665", ["cog"] = "rbxassetid://116544501716299",
@@ -127,13 +122,56 @@ YzZ.Icons = {
 	["circle-alert"] = "rbxassetid://83898160590116", ["triangle-alert"] = "rbxassetid://125920361880643",
 }
 
+local function MergeWindUIIcons()
+	local windUIURL = "https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"
+	local success, source = pcall(function()
+		return game:HttpGet(windUIURL)
+	end)
+
+	if not success or type(source) ~= "string" then
+		warn("[YzZ] WindUI icon download failed; keeping the existing YzZ icons.")
+		return
+	end
+
+	local iconBlock = source:match("function a%.b%(%)(.-)end function a%.c%(")
+	if not iconBlock then
+		warn("[YzZ] WindUI icon table was not found; keeping the existing YzZ icons.")
+		return
+	end
+
+	local windIcons = {}
+
+	for name, asset in iconBlock:gmatch('%["([^"]+)"%]%s*=%s*"(rbxassetid://%d+)"') do
+		windIcons[name] = asset
+	end
+
+	for name, asset in iconBlock:gmatch('([%a][%w%-]*)%s*=%s*"(rbxassetid://%d+)"') do
+		windIcons[name] = asset
+	end
+
+	local mergedIcons = {}
+
+	for name, asset in pairs(windIcons) do
+		mergedIcons[name] = asset
+	end
+
+	for name, asset in pairs(YzZ.Icons or {}) do
+		if mergedIcons[name] == nil then
+			mergedIcons[name] = asset
+		end
+	end
+
+	YzZ.Icons = mergedIcons
+end
+
+MergeWindUIIcons()
+
 function YzZ:AddIcons(tbl)
 	for name, value in pairs(tbl or {}) do
 		YzZ.Icons[string.lower(tostring(name))] = value
 	end
 end
 
---// ─────────────────────────────── Small helpers ───────────────────────────────
 local transparentClasses = {
 	TextLabel = true, TextButton = true, ImageLabel = true, ImageButton = true, ScrollingFrame = true,
 }
@@ -203,7 +241,6 @@ local function prettyKey(k)
 	return map[k] or k
 end
 
---// ─────────────────────────────── Icon / image resolving ───────────────────────────────
 local urlCache, urlPending = {}, {}
 
 local function loadUrlImage(url, callback)
@@ -238,7 +275,6 @@ local function loadUrlImage(url, callback)
 	end)
 end
 
--- returns kind, value   (kind: "image" | "url" | "named" | "text")
 local function resolveIcon(src)
 	if type(src) == "table" then return "image", src end
 	if type(src) == "number" then return "image", "rbxassetid://" .. src end
@@ -260,7 +296,6 @@ local function resolveIcon(src)
 	return "text", src
 end
 
---// ─────────────────────────────── Window: theme + binding ───────────────────────────────
 function WindowClass:_applyBinds()
 	local alive = {}
 	for _, b in ipairs(self._binds) do
@@ -323,7 +358,6 @@ function WindowClass:Stroke(parent, colorKey, thickness)
 	return s
 end
 
--- Creates an icon / image. Returns (imageLabel, controller) or nil
 function WindowClass:MakeIcon(parent, src, size, props, lockColor)
 	if src == nil or src == "" or src == false then return nil end
 	local kind, value = resolveIcon(src)
@@ -367,7 +401,6 @@ function WindowClass:MakeIcon(parent, src, size, props, lockColor)
 	return icon, ctl
 end
 
---// ─────────────────────────────── Dragging helper ───────────────────────────────
 local function MakeDraggable(Window, handle, target, opts)
 	opts = opts or {}
 	local dragging, moved, dragStart, startPos = false, false, nil, nil
@@ -408,7 +441,6 @@ local function MakeDraggable(Window, handle, target, opts)
 	end)
 end
 
---// ─────────────────────────────── Config system ───────────────────────────────
 function WindowClass:_configPath(name)
 	name = tostring(name):gsub("[^%w_%- ]", "")
 	return self.ConfigFolder .. "/configs/" .. name .. ".json"
@@ -516,7 +548,6 @@ function WindowClass:_register(tab, opts, title, obj)
 	return flag
 end
 
---// ─────────────────────────────── Window: visibility / title / misc ───────────────────────────────
 function WindowClass:SetVisible(v)
 	v = v and true or false
 	if self._destroyed or self.Visible == v then return end
@@ -561,7 +592,6 @@ function WindowClass:Destroy()
 	if env.__YzZHubWindow == self then env.__YzZHubWindow = nil end
 end
 
---// ─────────────────────────────── Notifications ───────────────────────────────
 function WindowClass:Notify(o)
 	if self._destroyed then return end
 	if type(o) == "string" then o = {Content = o} end
@@ -619,7 +649,6 @@ function WindowClass:Notify(o)
 	end)
 end
 
---// ─────────────────────────────── Dialog ───────────────────────────────
 function WindowClass:Dialog(o)
 	o = o or {}
 	local T = self.T
@@ -677,7 +706,6 @@ function WindowClass:Dialog(o)
 	return {Close = close}
 end
 
---// ─────────────────────────────── Tabs ───────────────────────────────
 function WindowClass:SelectTab(tab)
 	if type(tab) == "number" then tab = self.Tabs[tab] end
 	if not tab or self.ActiveTab == tab then return end
@@ -762,7 +790,6 @@ function WindowClass:CreateTab(opts)
 	return tab
 end
 
---// ─────────────────────────────── Element base ───────────────────────────────
 function TabClass:_base(opts, o)
 	o = o or {}
 	local W = self.Window
@@ -778,7 +805,6 @@ function TabClass:_base(opts, o)
 	local stroke = W:Stroke(frame, "Stroke", 1)
 	Create("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder, Parent = frame})
 
-	-- banner image (custom image support on every element)
 	if opts.Image then
 		local holder = Create("Frame", {Name = "Banner", Size = UDim2.new(1, 0, 0, opts.ImageHeight or 90), LayoutOrder = 1, Parent = frame})
 		holder.BackgroundTransparency = 1
@@ -861,7 +887,6 @@ local function decorate(el, base, W, flagGetter)
 	return el
 end
 
---// ─────────────────────────────── Section ───────────────────────────────
 function TabClass:CreateSection(opts)
 	if type(opts) == "string" then opts = {Title = opts} end
 	opts = opts or {}
@@ -892,7 +917,6 @@ function TabClass:CreateSection(opts)
 	return el
 end
 
---// ─────────────────────────────── Paragraph ───────────────────────────────
 function TabClass:CreateParagraph(opts)
 	opts = opts or {}
 	local W = self.Window
@@ -902,7 +926,6 @@ function TabClass:CreateParagraph(opts)
 	return decorate(el, base, W)
 end
 
---// ─────────────────────────────── Button ───────────────────────────────
 function TabClass:CreateButton(opts)
 	opts = opts or {}
 	local W = self.Window
@@ -927,7 +950,6 @@ function TabClass:CreateButton(opts)
 	return decorate(el, base, W)
 end
 
---// ─────────────────────────────── Toggle ───────────────────────────────
 function TabClass:CreateToggle(opts)
 	opts = opts or {}
 	local W = self.Window
@@ -991,7 +1013,6 @@ function TabClass:CreateToggle(opts)
 	return decorate(el, base, W, function() return flag end)
 end
 
---// ─────────────────────────────── Slider ───────────────────────────────
 function TabClass:CreateSlider(opts)
 	opts = opts or {}
 	local W = self.Window
@@ -1104,7 +1125,6 @@ function TabClass:CreateSlider(opts)
 	return decorate(el, base, W, function() return flag end)
 end
 
---// ─────────────────────────────── Textbox ───────────────────────────────
 function TabClass:CreateTextbox(opts)
 	opts = opts or {}
 	local W = self.Window
@@ -1170,7 +1190,6 @@ function TabClass:CreateTextbox(opts)
 	return decorate(el, base, W, function() return flag end)
 end
 
---// ─────────────────────────────── Dropdown (single + multi) ───────────────────────────────
 function TabClass:CreateDropdown(opts)
 	opts = opts or {}
 	local W = self.Window
@@ -1423,13 +1442,12 @@ function TabClass:CreateDropdown(opts)
 	return decorate(el, base, W, function() return flag end)
 end
 
---// ─────────────────────────────── Keybind ───────────────────────────────
 function TabClass:CreateKeybind(opts)
 	opts = opts or {}
 	local W = self.Window
 	local T = W.T
 	local title = opts.Title or opts.Name or "Keybind"
-	local mode = opts.Mode or "Press" -- "Press" | "Toggle" | "Hold"
+	local mode = opts.Mode or "Press"
 	local base = self:_base(opts, {Interactive = true, RightWidth = 80, RightHeight = 26})
 
 	local pill = Create("Frame", {Size = UDim2.fromScale(1, 1), Parent = base.Right})
@@ -1528,13 +1546,11 @@ function TabClass:CreateKeybind(opts)
 	return decorate(el, base, W, function() return flag end)
 end
 
--- Friendly aliases
 TabClass.AddSection, TabClass.AddParagraph, TabClass.AddButton = TabClass.CreateSection, TabClass.CreateParagraph, TabClass.CreateButton
 TabClass.AddToggle, TabClass.AddSlider, TabClass.AddTextbox = TabClass.CreateToggle, TabClass.CreateSlider, TabClass.CreateTextbox
 TabClass.AddDropdown, TabClass.AddKeybind = TabClass.CreateDropdown, TabClass.CreateKeybind
 TabClass.CreateInput = TabClass.CreateTextbox
 
---// ─────────────────────────────── Built-in Config tab ───────────────────────────────
 function WindowClass:CreateConfigTab(o)
 	o = o or {}
 	local tab = self:CreateTab({Title = o.Title or "Config", Icon = o.Icon or "save"})
@@ -1604,7 +1620,6 @@ function WindowClass:CreateConfigTab(o)
 	return tab
 end
 
---// ─────────────────────────────── CreateWindow ───────────────────────────────
 function YzZ:CreateWindow(opts)
 	opts = opts or {}
 	local env = (getgenv and getgenv()) or _G
@@ -1632,9 +1647,8 @@ function YzZ:CreateWindow(opts)
 	if opts.Accent then Window:SetAccent(opts.Accent) end
 	if opts.AutoLoad ~= false then Window._pending = Window:_readConfig(Window.CurrentConfig) end
 
-	-- ScreenGui
 	local gui = Create("ScreenGui", {
-		Name = "1_" .. string.sub(HttpService:GenerateGUID(false), 1, 8), ResetOnSpawn = false,
+		Name = "YzZHub_" .. string.sub(HttpService:GenerateGUID(false), 1, 8), ResetOnSpawn = false,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling, DisplayOrder = 999, IgnoreGuiInset = true,
 	})
 	if syn and syn.protect_gui then pcall(syn.protect_gui, gui) end
@@ -1653,7 +1667,6 @@ function YzZ:CreateWindow(opts)
 	Window.Compact = winW < 500
 	local sbW = Window.Compact and 128 or 168
 
-	-- Main window
 	local Main = Create("CanvasGroup", {
 		Name = "Main", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(winW, winH), BackgroundColor3 = T.Background, GroupTransparency = 1,
@@ -1665,7 +1678,6 @@ function YzZ:CreateWindow(opts)
 	Window._mainScale = Create("UIScale", {Scale = 1, Parent = Main})
 	Window.Main = Main
 
-	-- Topbar
 	local top = Create("Frame", {Name = "Topbar", Size = UDim2.new(1, 0, 0, 46), Parent = Main})
 	Window:Bind(top, {BackgroundColor3 = "Topbar"})
 	local topLine = Create("Frame", {AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 1), Parent = top})
@@ -1724,7 +1736,6 @@ function YzZ:CreateWindow(opts)
 
 	MakeDraggable(Window, top, Main)
 
-	-- Body
 	local body = Create("Frame", {Name = "Body", Position = UDim2.fromOffset(0, 46), Size = UDim2.new(1, 0, 1, -46), Parent = Main})
 	body.BackgroundTransparency = 1
 
@@ -1779,7 +1790,6 @@ function YzZ:CreateWindow(opts)
 	Window:Bind(cover, {BackgroundColor3 = "Background"})
 	Window._cover = cover
 
-	-- Notification holder
 	local notifyHolder = Create("Frame", {
 		Name = "Notifications", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -16),
 		Size = UDim2.new(0, Window.Compact and 250 or 290, 1, -32), Parent = gui,
@@ -1791,13 +1801,11 @@ function YzZ:CreateWindow(opts)
 	})
 	Window._notifyHolder = notifyHolder
 
-	-- Keybind to open / close
 	Window:_connect(UserInputService.InputBegan, function(input, gp)
 		if gp or Window._listening then return end
 		if matchesKey(Window.Keybind, input) then Window:Toggle() end
 	end)
 
-	-- Floating circle button
 	if opts.FloatingButton ~= false then
 		local fb = type(opts.FloatingButton) == "table" and opts.FloatingButton or {}
 		local fsize = fb.Size or 56
@@ -1849,10 +1857,11 @@ function YzZ:CreateWindow(opts)
 		})
 	end
 
-	-- Open (deferred so the script can finish building tabs first)
 	if opts.Open ~= false then
 		task.defer(function() Window:SetVisible(true) end)
 	end
 
 	return Window
 end
+
+return YzZ
